@@ -30,8 +30,11 @@ cp .env.example .env   # optionnel: ajouter des cles API gratuites
 # Fonctionne des l'installation, sans aucune cle API (source yfinance) :
 project-alpha analyze --tickers AAPL,MSFT,MC.PA
 
+# --capital dimensionne les positions suggerees sur ce capital (defaut: 500) :
+project-alpha analyze --tickers AAPL,MSFT,MC.PA --capital 500
+
 # Backtest historique (section 9), 2020 -> aujourd'hui, avec benchmark :
-project-alpha backtest --tickers AAPL,MSFT,SIE.DE,MC.PA --start 2020-01-01 --benchmark ^GSPC --out backtest.md
+project-alpha backtest --tickers AAPL,MSFT,SIE.DE,MC.PA --start 2020-01-01 --benchmark ^GSPC --capital 500 --out backtest.md
 
 pytest
 ```

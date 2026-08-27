@@ -223,6 +223,13 @@ class PriceZone(BaseModel):
     horizon_weeks_high: int = 16
 
 
+class PositionSizing(BaseModel):
+    shares: float
+    risk_pct: float
+    risk_amount: float
+    position_value: float
+
+
 class Recommendation(BaseModel):
     ticker: str
     as_of: datetime = Field(default_factory=datetime.utcnow)
@@ -230,6 +237,7 @@ class Recommendation(BaseModel):
     score: CompositeScore
     price_zone: PriceZone | None = None
     current_price: float | None = None
+    position_sizing: PositionSizing | None = None
     thesis_summary: str | None = None
     why_now: str | None = None
     invalidation: str | None = None

@@ -36,6 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     analyze.add_argument("--save", action="store_true", help="Persist prices and recommendations to the warehouse")
     analyze.add_argument("--out", help="Write the newsletter markdown to this file instead of stdout")
+    analyze.add_argument(
+        "--capital", type=float, default=500.0, help="Portfolio value in EUR/USD for position sizing (default: 500)"
+    )
 
     backtest = sub.add_parser(
         "backtest", help="Replay the technical/risk signal engine over real historical prices"
@@ -47,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--benchmark", default="^GSPC", help="Benchmark ticker for alpha, e.g. ^GSPC, ^STOXX, ^FCHI (empty to skip)"
     )
     backtest.add_argument("--out", help="Write the backtest report markdown to this file instead of stdout")
+    backtest.add_argument(
+        "--capital", type=float, default=500.0, help="Starting capital in EUR/USD for the equity curve (default: 500)"
+    )
 
     return parser
 
@@ -59,7 +65,7 @@ def run_analyze(args: argparse.Namespace) -> int:
     recommendations = []
     for ticker in tickers:
         try:
-            rec = analyze_ticker(ticker, regime=regime)
+            rec = analyze_ticker(ticker, regime=regime, portfolio_value=args.capital)
         except Exception:
             logging.exception("failed to analyze %s", ticker)
             continue
@@ -100,7 +106,10 @@ def run_analyze(args: argparse.Namespace) -> int:
 
 def run_backtest(args: argparse.Namespace) -> int:
     tickers = [t.strip() for t in args.tickers.split(",") if t.strip()]
-    result = fetch_and_run(tickers, start=args.start, end=args.end, benchmark_ticker=args.benchmark or None)
+    result = fetch_and_run(
+        tickers, start=args.start, end=args.end, benchmark_ticker=args.benchmark or None,
+        starting_capital=args.capital,
+    )
     report = render_backtest_report(result)
 
     if args.out:

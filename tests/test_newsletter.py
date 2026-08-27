@@ -4,6 +4,7 @@ from project_alpha.data.models import (
     CompositeScore,
     MarketRegime,
     ModuleScores,
+    PositionSizing,
     PriceZone,
     Recommendation,
     Signal,
@@ -11,7 +12,7 @@ from project_alpha.data.models import (
 from project_alpha.reporting.newsletter import render_newsletter
 
 
-def _recommendation(ticker: str, signal: Signal) -> Recommendation:
+def _recommendation(ticker: str, signal: Signal, position_sizing: PositionSizing | None = None) -> Recommendation:
     modules = ModuleScores(
         catalyst=80, fundamental=70, expectations=60, technical=65,
         valuation=55, market_regime=50, smart_money=50, risk=90,
@@ -37,11 +38,28 @@ def _recommendation(ticker: str, signal: Signal) -> Recommendation:
         score=score,
         price_zone=zone,
         current_price=152,
+        position_sizing=position_sizing,
         data_version="v0.1",
         scoring_version="v0.1",
         model_version="v0.1",
         prompt_version="v0.1",
     )
+
+
+def test_newsletter_shows_suggested_position_size():
+    sizing = PositionSizing(shares=0.5, risk_pct=0.01, risk_amount=5.0, position_value=76.0)
+    rec = _recommendation("SIEMENS_ENERGY", Signal.BUY, position_sizing=sizing)
+    text = render_newsletter(
+        as_of=date.today(),
+        regime=MarketRegime.RISK_ON,
+        top_opportunities=[rec],
+        traps=[],
+        not_yet_buyable=[],
+        positions_to_manage=[],
+        track_record=None,
+    )
+    assert "Taille suggeree: 0.5 titres" in text
+    assert "76.0 EUR" in text
 
 
 def test_newsletter_contains_regime_and_opportunity():

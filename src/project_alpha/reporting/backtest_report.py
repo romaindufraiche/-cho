@@ -19,6 +19,15 @@ def render_backtest_report(result: UniverseBacktestResult) -> str:
     lines = [
         f"# Backtest {m.start.isoformat()} -> {m.end.isoformat()}",
         "",
+    ]
+    if not result.equity_curve.empty:
+        start_capital = result.equity_curve.iloc[0]
+        end_capital = result.equity_curve.iloc[-1]
+        lines.append(
+            f"- Capital: {start_capital:.2f} -> {end_capital:.2f} "
+            f"({end_capital - start_capital:+.2f})"
+        )
+    lines += [
         f"- Trades: {m.n_trades}",
         f"- CAGR: {m.cagr}",
     ]

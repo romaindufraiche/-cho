@@ -1,5 +1,6 @@
 # Backtest 2020-10-21 -> 2026-03-26
 
+- Capital: 500.00 -> 499.95 (-0.05)
 - Trades: 39
 - CAGR: -0.0
 - Alpha vs ^GSPC: -0.1388

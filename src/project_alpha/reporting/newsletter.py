@@ -92,6 +92,12 @@ def _render_opportunity(rec: Recommendation) -> str:
         )
         if rr is not None:
             parts.append(f"- Ratio rendement/risque: {rr}")
+    if rec.position_sizing:
+        ps = rec.position_sizing
+        parts.append(
+            f"- Taille suggeree: {ps.shares} titres (~{ps.position_value} EUR) "
+            f"| Risque: {ps.risk_amount} EUR ({ps.risk_pct * 100:.2f}% du capital)"
+        )
     parts.append(
         f"- Quality/Opportunity/Price: {rec.score.quality_score}/{rec.score.opportunity_score}/{rec.score.price_score}"
     )

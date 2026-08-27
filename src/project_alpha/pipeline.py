@@ -21,7 +21,10 @@ from project_alpha.data.models import (
     FundamentalSnapshot,
     MarketRegime,
     ModuleScores,
+    PositionSizing,
+    PriceZone,
     Recommendation,
+    Signal,
     ValuationFeatures,
 )
 from project_alpha.data.sources import yfinance_source
@@ -36,11 +39,41 @@ from project_alpha.scoring.technical import compute_technical_features, technica
 from project_alpha.scoring.valuation import valuation_score
 from project_alpha.signals.engine import evaluate_new_candidate
 from project_alpha.signals.pricing import compute_price_zone
+from project_alpha.signals.position_sizing import position_size
 
 logger = logging.getLogger(__name__)
 
+# Actionable signals only: WATCH/HOLD/REDUCE/SELL/NO_TRADE don't imply
+# opening a new position, so sizing one for them would be misleading.
+_ENTRY_SIGNALS = {Signal.BUY, Signal.BUY_ON_DIP}
 
-def analyze_ticker(ticker: str, regime: MarketRegime = MarketRegime.NEUTRAL) -> Recommendation | None:
+
+def compute_recommended_position(
+    signal: Signal,
+    current_price: float | None,
+    zone: PriceZone | None,
+    risk_module_score: float,
+    portfolio_value: float,
+) -> PositionSizing | None:
+    """Pure sizing step (section 5), separated from `analyze_ticker` so it's
+    unit-testable without a network call: how many shares of `portfolio_value`
+    to put on, for an entry signal, given the stop implied by `zone`."""
+    if signal not in _ENTRY_SIGNALS or zone is None or current_price is None:
+        return None
+    sized = position_size(
+        portfolio_value=portfolio_value,
+        entry_price=current_price,
+        stop_price=zone.stop,
+        volatility_score=risk_module_score,
+    )
+    if sized["shares"] <= 0:
+        return None
+    return PositionSizing(**sized)
+
+
+def analyze_ticker(
+    ticker: str, regime: MarketRegime = MarketRegime.NEUTRAL, portfolio_value: float = 500.0
+) -> Recommendation | None:
     bars = yfinance_source.fetch_price_history(ticker)
     if not bars:
         logger.warning("no price history for %s, skipping", ticker)
@@ -76,6 +109,7 @@ def analyze_ticker(ticker: str, regime: MarketRegime = MarketRegime.NEUTRAL) -> 
     composite = build_composite_score(ticker, tech_features.as_of, modules)
     zone = compute_price_zone(current_price, tech_features)
     signal = evaluate_new_candidate(composite, current_price, zone)
+    sizing = compute_recommended_position(signal, current_price, zone, modules.risk, portfolio_value)
 
     return Recommendation(
         ticker=ticker,
@@ -83,6 +117,7 @@ def analyze_ticker(ticker: str, regime: MarketRegime = MarketRegime.NEUTRAL) -> 
         score=composite,
         price_zone=zone,
         current_price=current_price,
+        position_sizing=sizing,
         thesis_summary=_default_thesis_summary(modules),
         why_now=None,  # requires an Event; populated once the theme graph fires
         invalidation="Stop technique touche, guidance degradee, ou these invalidee.",
