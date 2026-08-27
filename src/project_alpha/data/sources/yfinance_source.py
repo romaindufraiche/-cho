@@ -18,6 +18,18 @@ from project_alpha.data.models import Company, PriceBar, Region
 
 def fetch_price_history(ticker: str, period: str = "2y") -> list[PriceBar]:
     hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+    return _bars_from_history(ticker, hist)
+
+
+def fetch_price_history_range(ticker: str, start: str, end: str | None = None) -> list[PriceBar]:
+    """Fetches OHLCV between `start` and `end` (ISO dates, end defaults to
+    today). Used by the historical backtest (section 9), which needs a full
+    2015/2020-today window rather than a relative lookback period."""
+    hist = yf.Ticker(ticker).history(start=start, end=end, auto_adjust=False)
+    return _bars_from_history(ticker, hist)
+
+
+def _bars_from_history(ticker: str, hist) -> list[PriceBar]:
     bars: list[PriceBar] = []
     for idx, row in hist.iterrows():
         bars.append(

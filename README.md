@@ -30,8 +30,20 @@ cp .env.example .env   # optionnel: ajouter des cles API gratuites
 # Fonctionne des l'installation, sans aucune cle API (source yfinance) :
 project-alpha analyze --tickers AAPL,MSFT,MC.PA
 
+# Backtest historique (section 9), 2020 -> aujourd'hui, avec benchmark :
+project-alpha backtest --tickers AAPL,MSFT,SIE.DE,MC.PA --start 2020-01-01 --benchmark ^GSPC --out backtest.md
+
 pytest
 ```
+
+> **Backtest — limitation actuelle.** `project-alpha backtest` ne fait varier
+> que les modules Technical/Momentum et Risk (25/100 du poids total) : les
+> cinq autres modules (Catalyst, Fundamental, Expectations, Valuation, Smart
+> Money) exigent des donnees point-in-time que la source gratuite utilisee
+> ici (yfinance) n'expose pas pour des dates passees — les utiliser
+> introduirait un biais de look-ahead. Voir `backtest/historical.py` pour le
+> detail et la piste (SEC EDGAR XBRL, donnees datees) pour lever cette
+> limitation.
 
 ## Architecture
 

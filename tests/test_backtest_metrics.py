@@ -8,11 +8,13 @@ from project_alpha.backtest.metrics import (
     expectancy,
     max_drawdown,
     profit_factor,
+    signal_precision,
+    target_hit_rate,
     win_rate,
 )
 
 
-def _trade(entry, exit_, days=30) -> Trade:
+def _trade(entry, exit_, days=30, exit_reason="") -> Trade:
     entry_date = pd.Timestamp("2024-01-01")
     return Trade(
         ticker="TEST",
@@ -20,6 +22,7 @@ def _trade(entry, exit_, days=30) -> Trade:
         exit_date=entry_date + pd.Timedelta(days=days),
         entry_price=entry,
         exit_price=exit_,
+        exit_reason=exit_reason,
     )
 
 
@@ -57,3 +60,22 @@ def test_max_drawdown_detects_peak_to_trough():
     curve = pd.Series([100, 120, 90, 95, 130], index=idx)
     dd = max_drawdown(curve)
     assert dd == pytest.approx((90 - 120) / 120, abs=1e-9)
+
+
+def test_signal_precision_matches_win_rate():
+    trades = [_trade(100, 110), _trade(100, 90), _trade(100, 120)]
+    assert signal_precision(trades) == win_rate(trades)
+
+
+def test_target_hit_rate_counts_only_target_reached_exits():
+    trades = [
+        _trade(100, 110, exit_reason="target_reached"),
+        _trade(100, 95, exit_reason="stop_hit"),
+        _trade(100, 101, exit_reason="time_stop"),
+        _trade(100, 130, exit_reason="target_reached"),
+    ]
+    assert target_hit_rate(trades) == pytest.approx(0.5)
+
+
+def test_target_hit_rate_empty_trades():
+    assert target_hit_rate([]) == 0.0

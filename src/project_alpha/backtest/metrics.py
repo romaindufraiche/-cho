@@ -23,6 +23,7 @@ class Trade:
     exit_date: pd.Timestamp
     entry_price: float
     exit_price: float
+    exit_reason: str = ""
 
     @property
     def return_pct(self) -> float:
@@ -104,3 +105,22 @@ def profit_factor(trades: list[Trade]) -> float:
 
 def alpha_vs_benchmark(strategy_cagr: float, benchmark_equity_curve: pd.Series) -> float:
     return round(strategy_cagr - cagr(benchmark_equity_curve), 4)
+
+
+def signal_precision(trades: list[Trade]) -> float:
+    """Of all BUY signals that were acted on, the fraction that closed at a
+    profit. Distinct name from `win_rate` (same computation today) so the
+    "precision de l'IA" the newsletter/report talks about has one obvious
+    place to read, and room to diverge from win_rate later (e.g. if
+    partial-fill or scaled-exit trades are introduced)."""
+    return win_rate(trades)
+
+
+def target_hit_rate(trades: list[Trade]) -> float:
+    """Stricter than `signal_precision`: the fraction of trades that closed
+    specifically because the base target was reached, rather than any exit
+    that happened to be profitable (e.g. a time-stop with a small gain)."""
+    if not trades:
+        return 0.0
+    hits = sum(1 for t in trades if t.exit_reason == "target_reached")
+    return round(hits / len(trades), 4)

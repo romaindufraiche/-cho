@@ -2,6 +2,7 @@
 
     project-alpha analyze --tickers AAPL,SIE.DE,MC.PA
     project-alpha analyze --tickers AAPL --save --out newsletter.md
+    project-alpha backtest --tickers AAPL,MSFT,SIE.DE --start 2020-01-01 --out backtest.md
 """
 
 from __future__ import annotations
@@ -12,9 +13,11 @@ import sys
 from datetime import date
 
 from project_alpha import __version__
+from project_alpha.backtest.historical import fetch_and_run
 from project_alpha.data.models import MarketRegime, Signal
 from project_alpha.data.storage import Warehouse
 from project_alpha.pipeline import analyze_ticker
+from project_alpha.reporting.backtest_report import render_backtest_report
 from project_alpha.reporting.newsletter import render_newsletter
 
 
@@ -33,6 +36,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     analyze.add_argument("--save", action="store_true", help="Persist prices and recommendations to the warehouse")
     analyze.add_argument("--out", help="Write the newsletter markdown to this file instead of stdout")
+
+    backtest = sub.add_parser(
+        "backtest", help="Replay the technical/risk signal engine over real historical prices"
+    )
+    backtest.add_argument("--tickers", required=True, help="Comma-separated tickers, e.g. AAPL,MSFT,SIE.DE")
+    backtest.add_argument("--start", default="2020-01-01", help="Start date, ISO format (default: 2020-01-01)")
+    backtest.add_argument("--end", default=None, help="End date, ISO format (default: today)")
+    backtest.add_argument(
+        "--benchmark", default="^GSPC", help="Benchmark ticker for alpha, e.g. ^GSPC, ^STOXX, ^FCHI (empty to skip)"
+    )
+    backtest.add_argument("--out", help="Write the backtest report markdown to this file instead of stdout")
 
     return parser
 
@@ -84,6 +98,20 @@ def run_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_backtest(args: argparse.Namespace) -> int:
+    tickers = [t.strip() for t in args.tickers.split(",") if t.strip()]
+    result = fetch_and_run(tickers, start=args.start, end=args.end, benchmark_ticker=args.benchmark or None)
+    report = render_backtest_report(result)
+
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(report)
+    else:
+        print(report)
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     parser = build_parser()
@@ -91,6 +119,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "analyze":
         return run_analyze(args)
+    if args.command == "backtest":
+        return run_backtest(args)
 
     parser.print_help()
     return 1
