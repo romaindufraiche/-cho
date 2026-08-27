@@ -5,12 +5,23 @@ from __future__ import annotations
 from project_alpha.backtest.historical import UniverseBacktestResult
 from project_alpha.backtest.metrics import signal_precision, target_hit_rate
 
-CAVEAT = (
+CAVEAT_HEURISTIC = (
     "Ce backtest ne fait varier que les modules Technical/Momentum et Risk "
     "(25/100 du poids total) ; Catalyst, Fundamental, Expectations, "
     "Valuation et Smart Money restent neutres (50/100) car leurs donnees "
     "point-in-time ne sont pas disponibles via la source gratuite utilisee "
     "ici. Voir backtest/historical.py pour le detail."
+)
+
+CAVEAT_TRAINED = (
+    "Poids appris (regression logistique, validation train/test chronologique - "
+    "voir ml/technical_risk_weights.json et ml/full_weights.json), pas fixes a "
+    "la main : Technical+Risk pour tous les titres, Fundamental+Valuation en plus "
+    "pour les titres avec depots SEC EDGAR (US uniquement - les titres europeens "
+    "restent sur Technical+Risk seul). Catalyst, Expectations et Smart Money "
+    "restent neutres, aucune source gratuite avec historique point-in-time "
+    "disponible ici. Performance hors echantillon faible (AUC ~0.44-0.56, proche "
+    "du hasard) : a traiter comme experimental, pas comme un edge valide."
 )
 
 
@@ -19,6 +30,7 @@ def render_backtest_report(result: UniverseBacktestResult) -> str:
     lines = [
         f"# Backtest {m.start.isoformat()} -> {m.end.isoformat()}",
         "",
+        f"- Modele d'entree: {result.entry_model}",
     ]
     if not result.equity_curve.empty:
         start_capital = result.equity_curve.iloc[0]
@@ -47,5 +59,6 @@ def render_backtest_report(result: UniverseBacktestResult) -> str:
     ]
     for ticker, n in sorted(result.trades_per_ticker.items()):
         lines.append(f"- {ticker}: {n}")
-    lines += ["", "---", CAVEAT]
+    caveat = CAVEAT_TRAINED if result.entry_model != "heuristic" else CAVEAT_HEURISTIC
+    lines += ["", "---", caveat]
     return "\n".join(lines)

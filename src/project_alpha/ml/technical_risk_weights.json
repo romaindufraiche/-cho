@@ -1,0 +1,92 @@
+{
+  "feature_names": [
+    "trend_score",
+    "rsi_14",
+    "macd_hist",
+    "volume_zscore",
+    "atr_pct",
+    "realized_vol"
+  ],
+  "means": {
+    "trend_score": 0.2082007776599505,
+    "rsi_14": 33.21304312100364,
+    "macd_hist": -0.878243527523458,
+    "volume_zscore": 0.8179126719819051,
+    "atr_pct": 0.02776730763955383,
+    "realized_vol": 0.29477757443441854
+  },
+  "stds": {
+    "trend_score": 0.25804122662979884,
+    "rsi_14": 7.5730023571243095,
+    "macd_hist": 1.3845832695689058,
+    "volume_zscore": 1.180618626008931,
+    "atr_pct": 0.015589334511158369,
+    "realized_vol": 0.1710193617848353
+  },
+  "coefficients": {
+    "trend_score": 0.18096772478769965,
+    "rsi_14": 0.12839788753873338,
+    "macd_hist": 0.018204868245495276,
+    "volume_zscore": -0.02781194866962526,
+    "atr_pct": 0.2881244056159028,
+    "realized_vol": -0.1642287979452735
+  },
+  "intercept": -0.6042723904716708,
+  "normalized_weights_pct": {
+    "trend_score": 22.4,
+    "rsi_14": 15.9,
+    "macd_hist": 2.25,
+    "volume_zscore": 3.44,
+    "atr_pct": 35.67,
+    "realized_vol": 20.33
+  },
+  "metrics": {
+    "n_train": 943,
+    "n_test": 345,
+    "train_base_rate": 0.3552,
+    "test_base_rate": 0.2696,
+    "deployment_threshold": 0.25,
+    "test_n_signals": 344,
+    "test_precision": 0.2703,
+    "test_recall": 1.0,
+    "test_auc": 0.5555
+  },
+  "cutoff_date": "2023-01-01",
+  "universe": [
+    "AAPL",
+    "ADBE",
+    "AIR.PA",
+    "ALV.DE",
+    "AMZN",
+    "ASML.AS",
+    "CRM",
+    "CSCO",
+    "CVX",
+    "DIS",
+    "GOOGL",
+    "HD",
+    "INTC",
+    "JNJ",
+    "JPM",
+    "KO",
+    "MA",
+    "MC.PA",
+    "META",
+    "MSFT",
+    "NESN.SW",
+    "NFLX",
+    "NVDA",
+    "OR.PA",
+    "PEP",
+    "PG",
+    "SAN.PA",
+    "SAP.DE",
+    "SIE.DE",
+    "TSLA",
+    "TTE.PA",
+    "UNH",
+    "V",
+    "XOM"
+  ],
+  "trained_at": "2026-08-27T20:42:53.432730+00:00"
+}

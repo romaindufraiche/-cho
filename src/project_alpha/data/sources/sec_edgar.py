@@ -19,15 +19,22 @@ def _headers() -> dict:
     return {"User-Agent": SETTINGS.sec_edgar_user_agent}
 
 
+_ticker_map_cache: dict[str, str] | None = None
+
+
 def lookup_cik(ticker: str) -> str | None:
     """Resolves a ticker to a zero-padded 10-digit CIK via SEC's public
-    ticker map. Cheap enough to call each time; callers should cache."""
-    resp = requests.get(_TICKER_MAP_URL, headers=_headers(), timeout=15)
-    resp.raise_for_status()
-    for entry in resp.json().values():
-        if entry.get("ticker", "").upper() == ticker.upper():
-            return str(entry["cik_str"]).zfill(10)
-    return None
+    ticker map. The map (~1MB, one entry per US filer) is fetched once per
+    process and cached, since callers resolving a whole universe would
+    otherwise re-download it per ticker."""
+    global _ticker_map_cache
+    if _ticker_map_cache is None:
+        resp = requests.get(_TICKER_MAP_URL, headers=_headers(), timeout=15)
+        resp.raise_for_status()
+        _ticker_map_cache = {
+            entry["ticker"].upper(): str(entry["cik_str"]).zfill(10) for entry in resp.json().values()
+        }
+    return _ticker_map_cache.get(ticker.upper())
 
 
 def get_company_facts(cik: str) -> dict:

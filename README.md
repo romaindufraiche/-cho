@@ -36,6 +36,12 @@ project-alpha analyze --tickers AAPL,MSFT,MC.PA --capital 500
 # Backtest historique (section 9), 2020 -> aujourd'hui, avec benchmark :
 project-alpha backtest --tickers AAPL,MSFT,SIE.DE,MC.PA --start 2020-01-01 --benchmark ^GSPC --capital 500 --out backtest.md
 
+# Poids appris sur l'historique reel (regression logistique) plutot que fixes
+# a la main - requiert l'extra 'ml' :
+pip install -e ".[dev,ml]"
+project-alpha train-weights --extended
+project-alpha backtest --tickers AAPL,MSFT,SIE.DE,MC.PA --start 2020-01-01 --benchmark ^GSPC --capital 500 --trained --out backtest.md
+
 pytest
 ```
 
@@ -45,8 +51,50 @@ pytest
 > Money) exigent des donnees point-in-time que la source gratuite utilisee
 > ici (yfinance) n'expose pas pour des dates passees — les utiliser
 > introduirait un biais de look-ahead. Voir `backtest/historical.py` pour le
-> detail et la piste (SEC EDGAR XBRL, donnees datees) pour lever cette
-> limitation.
+> detail. `--trained` (voir section suivante) leve partiellement cette
+> limitation pour Fundamental/Valuation sur les titres US via SEC EDGAR ;
+> Catalyst, Expectations et Smart Money restent neutres quoi qu'il arrive,
+> faute de source gratuite avec historique point-in-time.
+
+## Poids appris (`train-weights`) plutot que fixes a la main
+
+Les poids du cahier des charges (Catalyst 20, Fundamental 15, ...) sont des
+poids de depart, pas des poids valides empiriquement. `project-alpha
+train-weights` fitte une regression logistique sur ce qui s'est reellement
+passe historiquement, avec un split train/test chronologique (pas de
+shuffle) pour que les metriques rapportees soient honnetement hors
+echantillon :
+
+```bash
+project-alpha train-weights --start 2012-01-01 --cutoff 2023-01-01           # Technical + Risk, tous titres
+project-alpha train-weights --start 2012-01-01 --cutoff 2023-01-01 --extended  # + Fundamental/Valuation (SEC EDGAR, US uniquement)
+```
+
+Ce que ca entraine reellement, et ce que ca ne peut pas entrainer :
+
+| Module | Poids | Entrainable aujourd'hui ? |
+|---|---|---|
+| Technical / Momentum | 15 | Oui — historique de prix complet (yfinance) |
+| Risk (volatilite realisee) | 10 | Oui |
+| Fundamental | 15 | Oui, **titres US uniquement** — XBRL SEC EDGAR, dates de depot reelles |
+| Valuation | 15 | Oui, **titres US uniquement** — derive du P/E point-in-time |
+| Catalyst | 20 | Non — pas de flux d'evenements historique et date gratuit |
+| Expectations / Revisions | 15 | Non — pas d'historique de consensus analystes gratuit |
+| Market Regime | 5 | Non (pas encore construit) |
+| Smart Money | 5 | Non — 13F historique demanderait un pipeline dedie |
+
+**Resultat honnete au 2026-08-27** (univers de 33 grandes capitalisations
+US+Europe, 2012-2026, split train avant/test apres 2023-01-01) : le modele
+Technical+Risk seul atteint une AUC hors echantillon de **~0.56** (a peine
+mieux que le hasard, 0.50) ; le modele etendu Fundamental+Valuation (US
+uniquement, echantillon plus petit) tombe a **~0.44** — probablement du
+bruit d'echantillon plutot qu'un signal negatif reel, mais en tout cas
+aucune preuve d'edge. Voir `ml/technical_risk_weights.json` et
+`ml/full_weights.json` (coefficients, metriques, univers d'entrainement)
+pour le detail. `--trained` sur `backtest` reste donc **opt-in et
+experimental**, pas active par defaut (`analyze`, qui emet les
+recommandations du jour, continue d'utiliser les poids fixes du cahier des
+charges pour l'instant).
 
 ## Architecture
 
@@ -61,6 +109,7 @@ src/project_alpha/
   signals/            # zone d'achat, stop, targets, position sizing, moteur de signal
   portfolio/           # garde-fous portefeuille (correlation, secteur, limites) + thesis tracker
   backtest/            # metriques (CAGR, Sharpe, ...) + simulateur + walk-forward splits
+  ml/                   # poids Technical/Risk(+Fundamental/Valuation US) appris sur l'historique
   reporting/           # generation de la newsletter (Markdown)
   pipeline.py           # orchestration bout-en-bout pour un ticker
   cli.py                 # `project-alpha analyze ...`
