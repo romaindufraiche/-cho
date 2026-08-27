@@ -11,13 +11,21 @@ from __future__ import annotations
 from datetime import date
 
 import pandas as pd
+import requests
 import yfinance as yf
 
 from project_alpha.data.models import Company, PriceBar, Region
 
+# yfinance's default transport (curl_cffi, used for browser TLS
+# impersonation) gets its connections reset by some corporate/CI egress
+# proxies. A plain `requests` session works fine against Yahoo's endpoints
+# and sidesteps that, so every yf.Ticker() call below shares one.
+_SESSION = requests.Session()
+_SESSION.headers.update({"User-Agent": "Mozilla/5.0"})
+
 
 def fetch_price_history(ticker: str, period: str = "2y") -> list[PriceBar]:
-    hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+    hist = yf.Ticker(ticker, session=_SESSION).history(period=period, auto_adjust=False)
     return _bars_from_history(ticker, hist)
 
 
@@ -25,7 +33,7 @@ def fetch_price_history_range(ticker: str, start: str, end: str | None = None) -
     """Fetches OHLCV between `start` and `end` (ISO dates, end defaults to
     today). Used by the historical backtest (section 9), which needs a full
     2015/2020-today window rather than a relative lookback period."""
-    hist = yf.Ticker(ticker).history(start=start, end=end, auto_adjust=False)
+    hist = yf.Ticker(ticker, session=_SESSION).history(start=start, end=end, auto_adjust=False)
     return _bars_from_history(ticker, hist)
 
 
@@ -48,7 +56,7 @@ def _bars_from_history(ticker: str, hist) -> list[PriceBar]:
 
 
 def fetch_company_profile(ticker: str) -> Company:
-    info = yf.Ticker(ticker).info or {}
+    info = yf.Ticker(ticker, session=_SESSION).info or {}
     country = (info.get("country") or "").lower()
     region = Region.US if country in {"united states", "usa"} else Region.EUROPE
     return Company(
@@ -66,7 +74,7 @@ def fetch_company_profile(ticker: str) -> Company:
 def fetch_valuation_snapshot(ticker: str) -> dict:
     """Returns raw multiples from yfinance `info`; used as a stand-in for
     FMP/SEC-derived ValuationFeatures until those sources are wired in."""
-    info = yf.Ticker(ticker).info or {}
+    info = yf.Ticker(ticker, session=_SESSION).info or {}
     return {
         "pe_ratio": info.get("trailingPE"),
         "ev_ebitda": info.get("enterpriseToEbitda"),
@@ -84,7 +92,7 @@ def _price_to_fcf(info: dict) -> float | None:
 
 
 def fetch_fundamentals_snapshot(ticker: str) -> dict:
-    info = yf.Ticker(ticker).info or {}
+    info = yf.Ticker(ticker, session=_SESSION).info or {}
     return {
         "revenue_growth_yoy": info.get("revenueGrowth"),
         "gross_margin": info.get("grossMargins"),
