@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-alpha"
+version = "0.1.0"
+description = "Systeme personnel d'analyse boursiere augmentee par IA (Project Alpha)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary - Personal use only" }
+dependencies = [
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "pydantic>=2.5",
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+ml = [
+    "scikit-learn>=1.4",
+]
+
+[project.scripts]
+project-alpha = "project_alpha.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
